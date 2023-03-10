@@ -9,14 +9,16 @@ SEED = 1
 DETERMINISTIC_TORCH = True
 USE_GPU = True
 
+ENVIRONMENT_ID = "CartPole-v1" # Start with cartpole for development
+
 if __name__ == "__main__"
-# SEEDING
-random.seed(SEED)
-np.random.seed(SEED)
-torch.manual_seed(SEED)
-torch.backends.cudnn.deterministic = DETERMINISTIC_TORCH
+    # SEEDING
+    random.seed(SEED)
+    np.random.seed(SEED)
+    torch.manual_seed(SEED)
+    torch.backends.cudnn.deterministic = DETERMINISTIC_TORCH
 
-# Use GPU
-device = torch.device("cuda" if torch.cuda.is_available() and USE_GPU else "cpu")
+    # Use GPU
+    device = torch.device("cuda" if torch.cuda.is_available() and USE_GPU else "cpu")
 
-# Initialize the environment
+    # Initialize the environment
