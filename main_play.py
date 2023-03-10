@@ -18,3 +18,5 @@ torch.backends.cudnn.deterministic = DETERMINISTIC_TORCH
 
 # Use GPU
 device = torch.device("cuda" if torch.cuda.is_available() and USE_GPU else "cpu")
+
+# Initialize the environment
