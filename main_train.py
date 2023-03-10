@@ -34,3 +34,12 @@ if __name__ == "__main__":
     # multiple instances of the environment at the same time. First during a rollout phase, the agent plays for a number of
     # steps in each environment storing all the experiences. Then in the learning phase, the agent improves based on what it has seen.
     environments = gym.vector.SyncVectorEnv([create_env_factory(ENVIRONMENT_ID, SEED + i, i, run_name) for i in range(NUM_ENVS)])
+    
+    # Reset environment
+    observation = environments.reset()
+    
+    # Test gameplaying loop with random actions
+    for _ in range(200):
+        action = environments.action_space.sample()
+        observation, reward, done, info = environments.step(action)
+        
