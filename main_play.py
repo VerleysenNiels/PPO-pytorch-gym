@@ -11,7 +11,7 @@ USE_GPU = True
 
 ENVIRONMENT_ID = "CartPole-v1" # Start with cartpole for development
 
-if __name__ == "__main__"
+if __name__ == "__main__":
     # SEEDING
     random.seed(SEED)
     np.random.seed(SEED)
