@@ -6,6 +6,7 @@ import numpy as np
 import torch
 
 from src.environment_factory import create_env_factory
+from src.ppo_agents import AgentSmall
 
 # Arguments (TODO: handle with argument parser)
 SEED = 1
@@ -34,6 +35,11 @@ if __name__ == "__main__":
     # multiple instances of the environment at the same time. First during a rollout phase, the agent plays for a number of
     # steps in each environment storing all the experiences. Then in the learning phase, the agent improves based on what it has seen.
     environments = gym.vector.SyncVectorEnv([create_env_factory(ENVIRONMENT_ID, SEED + i, i, run_name) for i in range(NUM_ENVS)])
+    
+    assert isinstance(environments.single_action_space, gym.spaces.Discrete), "PPO only supports environments with a discrete action space."
+    
+    # Create agent
+    agent = AgentSmall(environments)
     
     # Reset environment
     observation = environments.reset()
