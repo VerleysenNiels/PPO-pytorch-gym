@@ -19,7 +19,7 @@ NUM_ENVS = 4
 NUM_STEPS_COLLECTED = 128
 
 LEARNING_RATE = 2.5e-4
-
+TOTAL_TIMESTEPS = 25000
 
 if __name__ == "__main__":
     # SEEDING
@@ -54,11 +54,40 @@ if __name__ == "__main__":
     dones = torch.zeros((NUM_STEPS_COLLECTED, NUM_ENVS)).to(device)
     values = torch.zeros((NUM_STEPS_COLLECTED, NUM_ENVS)).to(device)
     
-    # Reset environment
-    observation = environments.reset()
+    # Prepare for playing
+    global_step = 0
+    start_timestamp = time.time()
+    next_observation = environments.reset()
+    next_done = torch.zeros(NUM_ENVS)
     
-    # Test gameplaying loop with random actions
-    for _ in range(200):
-        action = environments.action_space.sample()
-        observation, reward, done, info = environments.step(action)
+    batch_size = int(NUM_ENVS * NUM_STEPS_COLLECTED)
+    num_updates_to_perform = TOTAL_TIMESTEPS // batch_size
+    
+    # Training loop
+    for update_idx in range(1, num_updates_to_perform + 1):
+        # Learning rate decay (annealing)
+        # The learning rate will gradually decay from the configured value in the first loop to 0 in the last.
+        current_lr = LEARNING_RATE * (1 - (update_idx - 1) / num_updates_to_perform)
+        optimizer.param_groups[0]["lr"] = current_lr
         
+        # Rollout phase
+        # Perform actions for a given number of steps in each of the environment instances. Collect all experiences.
+        for step in range(NUM_STEPS_COLLECTED):
+            global_step += NUM_ENVS
+            
+            # Store state
+            observations[step] = next_observation
+            dones[step] = next_done
+            
+            # Select and store action
+            with torch.no_grad():
+                action, logprob, _, value = agent.get_action_and_value(next_observation)
+                values[step] = value.flatten()
+            actions[step] = action
+            logprobs[step] = logprob
+            
+            # Perform action and store result
+            next_observation, reward, done, info = environments.step(action.cpu().numpy())
+            rewards[step] = torch.tensor(reward).to(device).view(-1)
+            next_observation = torch.Tensor(next_observation).to(device)
+            next_done = torch.Tensor(done).to(device)
