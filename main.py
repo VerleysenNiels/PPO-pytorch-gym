@@ -15,7 +15,8 @@ DETERMINISTIC_TORCH = True
 USE_GPU = True
 
 ENVIRONMENT_ID = "CartPole-v1" # Start with cartpole for development
-NUM_ENVS = 1
+NUM_ENVS = 4
+NUM_STEPS_COLLECTED = 128
 
 LEARNING_RATE = 2.5e-4
 
@@ -44,6 +45,14 @@ if __name__ == "__main__":
     # Init agent and optimizer
     agent = AgentSmall(environments)
     optimizer = optim.Adam(agent.parameters(), lr=LEARNING_RATE, eps=1e-5)
+    
+    # Storage of rollout experiences
+    observations = torch.zeros((NUM_STEPS_COLLECTED, NUM_ENVS) + environments.single_observation_space.shape).to(device)
+    actions = torch.zeros((NUM_STEPS_COLLECTED, NUM_ENVS) + environments.single_action_space.shape).to(device)
+    logprobs = torch.zeros((NUM_STEPS_COLLECTED, NUM_ENVS)).to(device)
+    rewards = torch.zeros((NUM_STEPS_COLLECTED, NUM_ENVS)).to(device)
+    dones = torch.zeros((NUM_STEPS_COLLECTED, NUM_ENVS)).to(device)
+    values = torch.zeros((NUM_STEPS_COLLECTED, NUM_ENVS)).to(device)
     
     # Reset environment
     observation = environments.reset()
