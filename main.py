@@ -4,6 +4,7 @@ import time
 import gym
 import numpy as np
 import torch
+import torch.optim as optim
 
 from src.environment_factory import create_env_factory
 from src.ppo_agents import AgentSmall
@@ -15,6 +16,8 @@ USE_GPU = True
 
 ENVIRONMENT_ID = "CartPole-v1" # Start with cartpole for development
 NUM_ENVS = 1
+
+LEARNING_RATE = 2.5e-4
 
 
 if __name__ == "__main__":
@@ -38,8 +41,9 @@ if __name__ == "__main__":
     
     assert isinstance(environments.single_action_space, gym.spaces.Discrete), "PPO only supports environments with a discrete action space."
     
-    # Create agent
+    # Init agent and optimizer
     agent = AgentSmall(environments)
+    optimizer = optim.Adam(agent.parameters(), lr=LEARNING_RATE, eps=1e-5)
     
     # Reset environment
     observation = environments.reset()
