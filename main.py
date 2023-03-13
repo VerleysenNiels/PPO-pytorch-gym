@@ -5,6 +5,7 @@ import gym
 import numpy as np
 import torch
 import torch.optim as optim
+import torch.nn as nn
 
 from src.environment_factory import create_env_factory
 from src.ppo_agents import AgentSmall
@@ -17,12 +18,19 @@ USE_GPU = True
 ENVIRONMENT_ID = "CartPole-v1" # Start with cartpole for development
 NUM_ENVS = 4
 NUM_STEPS_COLLECTED = 128
+NUM_MINI_BATCHES = 4
+NUM_EPOCHS = 4          # Number of epochs per training phase
 
 LEARNING_RATE = 2.5e-4
 TOTAL_TIMESTEPS = 25000
 
 GAE_GAMMA = 0.99
 GAE_LAMBDA = 0.95
+
+CLIP_COEFF = 0.2
+ENT_LOSS_COEFF = 0.01
+VALUE_LOSS_COEFF = 0.5
+MAX_GRADIENT = 0.5
 
 if __name__ == "__main__":
     # SEEDING
@@ -121,3 +129,56 @@ if __name__ == "__main__":
                 
             returns = advantages + values
             
+        # Flattening of the data in the batch
+        b_observations = observations.reshape((-1,) + environments.single_observation_space.shape)
+        b_logprobs = logprobs.reshape(-1)
+        b_actions = actions.reshape((-1,) + environments.single_action_space.shape)
+        b_advantages = advantages.reshape(-1)
+        b_returns = returns.reshape(-1)
+        b_values = values.reshape(-1)
+
+        # Policy and value network optimization
+        b_indices = np.arange(batch_size)
+        clipped_fractions = []
+        # Optimize with the observations from the rollout for the configured number of epochs
+        for epoch in range(NUM_EPOCHS):
+            # Random shuffling and division in minibatches
+            np.random.shuffle(b_indices)
+            for start in range(0, batch_size, NUM_MINI_BATCHES):
+                end = start + NUM_MINI_BATCHES
+                mb_indices = b_indices[start:end]
+
+                # Get predictions by the agent on the minibatch
+                _, newlogprob, entropy, newvalue = agent.get_action_and_value(b_observations[mb_indices], b_actions.long()[mb_indices])
+                # Compare how the model has already evolved since the collection of this experience during rollout
+                logratio = newlogprob - b_logprobs[mb_indices]
+                ratio = logratio.exp()
+
+                # Get and normalize the advantages of this minibatch 
+                mb_advantages = b_advantages[mb_indices]
+                mb_advantages = (mb_advantages - mb_advantages.mean()) / (mb_advantages.std() + 1e-8) 
+
+                # Clipped surrogate objective
+                pg_loss1 = -mb_advantages * ratio
+                pg_loss2 = -mb_advantages * torch.clamp(ratio, 1 - CLIP_COEFF, 1 + CLIP_COEFF)
+                pg_loss = torch.max(pg_loss1, pg_loss2).mean()
+
+                # Value loss
+                new_value = new_value.view(-1)
+                v_loss_unclipped = (new_value - b_returns[mb_indices]) ** 2
+                v_clipped = b_values[mb_indices] + torch.clamp(new_value - b_values[mb_indices], -CLIP_COEFF, CLIP_COEFF)
+                v_loss_clipped = (v_clipped - b_returns[mb_indices]) ** 2
+                v_loss_max = torch.max(v_loss_unclipped, v_loss_clipped)
+                v_loss = 0.5 * v_loss_max.mean()
+
+                # Entropy loss
+                entropy_loss = entropy.mean()
+                
+                # Total loss
+                loss = pg_loss - ENT_LOSS_COEFF * entropy_loss + VALUE_LOSS_COEFF * v_loss
+
+                # Optimizer step with clipped gradients
+                optimizer.zero_grad()
+                loss.backward()
+                nn.utils.clip_grad_norm_(agent.parameters(), MAX_GRADIENT)
+                optimizer.step()
