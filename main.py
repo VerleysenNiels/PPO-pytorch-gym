@@ -1,11 +1,13 @@
 # Imports
 import random
 import time
+
 import gym
 import numpy as np
 import torch
-import torch.optim as optim
 import torch.nn as nn
+import torch.optim as optim
+from torch.utils.tensorboard import SummaryWriter
 
 from src.environment_factory import create_env_factory
 from src.ppo_agents import AgentSmall
@@ -44,6 +46,9 @@ if __name__ == "__main__":
 
     # Generate run-name
     run_name = f"PPO-{ENVIRONMENT_ID}-{int(time.time())}"
+    
+    # Initialize tensorboard summary writer
+    writer = SummaryWriter(f"tensorboard/{run_name}")
 
     # Initialize the environment
     # For training PPO we need to use a vectorized architecture, this means that a single agent will be learning from
@@ -55,6 +60,7 @@ if __name__ == "__main__":
     
     # Init agent and optimizer
     agent = AgentSmall(environments)
+    agent.to(device)
     optimizer = optim.Adam(agent.parameters(), lr=LEARNING_RATE, eps=1e-5)
     
     # Storage of rollout experiences
@@ -68,8 +74,8 @@ if __name__ == "__main__":
     # Prepare for playing
     global_step = 0
     start_timestamp = time.time()
-    next_observation = environments.reset()
-    next_done = torch.zeros(NUM_ENVS)
+    next_observation = torch.Tensor(environments.reset()).to(device)
+    next_done = torch.zeros(NUM_ENVS).to(device)
     
     batch_size = int(NUM_ENVS * NUM_STEPS_COLLECTED)
     num_updates_to_perform = TOTAL_TIMESTEPS // batch_size
@@ -124,8 +130,8 @@ if __name__ == "__main__":
                     nextvalues = values[t + 1]
                 
                 delta = rewards[t] + GAE_GAMMA * nextvalues * nextnonterminal - values[t]
-                advantages[t] = delta + GAE_GAMMA * GAE_LAMBDA * nextnonterminal * last_gae
-                last_gae = advantages[t]
+                advantages[t] = delta + GAE_GAMMA * GAE_LAMBDA * nextnonterminal * next_advantage
+                next_advantage = advantages[t]
                 
             returns = advantages + values
             
@@ -149,10 +155,17 @@ if __name__ == "__main__":
                 mb_indices = b_indices[start:end]
 
                 # Get predictions by the agent on the minibatch
-                _, newlogprob, entropy, newvalue = agent.get_action_and_value(b_observations[mb_indices], b_actions.long()[mb_indices])
+                _, newlogprob, entropy, new_value = agent.get_action_and_value(b_observations[mb_indices], b_actions.long()[mb_indices])
                 # Compare how the model has already evolved since the collection of this experience during rollout
                 logratio = newlogprob - b_logprobs[mb_indices]
                 ratio = logratio.exp()
+
+                # DEBUG VARIABLES
+                with torch.no_grad():
+                    # Approximate Kullback–Leibler divergence to monitor how aggressive the policy is updated
+                    approx_kl = ((ratio - 1) - logratio).mean()
+                    # Monitor how often clipping is triggered
+                    clipped_fractions += [((ratio - 1.0).abs() > CLIP_COEFF).float().mean().item()]
 
                 # Get and normalize the advantages of this minibatch 
                 mb_advantages = b_advantages[mb_indices]
@@ -182,3 +195,13 @@ if __name__ == "__main__":
                 loss.backward()
                 nn.utils.clip_grad_norm_(agent.parameters(), MAX_GRADIENT)
                 optimizer.step()
+                
+        # Write results of this rollout and training phase to tensorboard.
+        writer.add_scalar("charts/learning_rate", optimizer.param_groups[0]["lr"], global_step)
+        writer.add_scalar("charts/approximate_kl", approx_kl.item(), global_step)
+        writer.add_scalar("charts/mean_fraction_clipped", np.mean(clipped_fractions), global_step) 
+        writer.add_scalar("losses/value_loss", v_loss.item(), global_step)
+        writer.add_scalar("losses/policy_loss", pg_loss.item(), global_step)
+        writer.add_scalar("losses/entropy", entropy_loss.item(), global_step)
+        writer.add_scalar("losses/total_loss", loss.item(), global_step)
+        

@@ -45,3 +45,7 @@ class AgentSmall(nn.Module):
         if action is None:
             action = action_probabilities.sample()
         return action, action_probabilities.log_prob(action), action_probabilities.entropy(), self.critic(x)
+    
+    def to(self, device):
+        self.critic = self.critic.to(device)
+        self.actor = self.actor.to(device)
