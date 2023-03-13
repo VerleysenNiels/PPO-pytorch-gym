@@ -21,6 +21,9 @@ NUM_STEPS_COLLECTED = 128
 LEARNING_RATE = 2.5e-4
 TOTAL_TIMESTEPS = 25000
 
+GAE_GAMMA = 0.99
+GAE_LAMBDA = 0.95
+
 if __name__ == "__main__":
     # SEEDING
     random.seed(SEED)
@@ -91,3 +94,30 @@ if __name__ == "__main__":
             rewards[step] = torch.tensor(reward).to(device).view(-1)
             next_observation = torch.Tensor(next_observation).to(device)
             next_done = torch.Tensor(done).to(device)
+        
+        # Generalized Advantage Estimation (GAE)
+        # Compute advantages for training    
+        with torch.no_grad():
+            # Estimate the values of the next states if not done yet
+            next_value = agent.get_value(next_observation).reshape(1, -1)
+            # Init datastructure to store advantages
+            advantages = torch.zeros_like(rewards).to(device)
+            # Advantage needs to take into account the advantage in the next state as well.
+            # As we start at the end, we initialize this to 0 and afterwards just store the previous advantage estimate in this variable.
+            next_advantage = 0
+            
+            # Actual advantage estimation by going from end to start over the collected observations.
+            for t in reversed(range(NUM_STEPS_COLLECTED)):
+                if t == NUM_STEPS_COLLECTED - 1:
+                    nextnonterminal = 1.0 - next_done
+                    nextvalues = next_value
+                else:
+                    nextnonterminal = 1.0 - dones[t + 1]
+                    nextvalues = values[t + 1]
+                
+                delta = rewards[t] + GAE_GAMMA * nextvalues * nextnonterminal - values[t]
+                advantages[t] = delta + GAE_GAMMA * GAE_LAMBDA * nextnonterminal * last_gae
+                last_gae = advantages[t]
+                
+            returns = advantages + values
+            
