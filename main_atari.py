@@ -10,7 +10,7 @@ import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 
 from src.environment_factory import create_env_factory_atari
-from src.ppo_agents import AgentSmall
+from src.ppo_agents import AtariAgentSmall
 
 # Arguments (TODO: handle with argument parser)
 SEED = 1
@@ -59,7 +59,7 @@ if __name__ == "__main__":
     assert isinstance(environments.single_action_space, gym.spaces.Discrete), "PPO only supports environments with a discrete action space."
     
     # Init agent and optimizer
-    agent = AgentSmall(environments)
+    agent = AtariAgentSmall(environments)
     agent.to(device)
     optimizer = optim.Adam(agent.parameters(), lr=LEARNING_RATE, eps=1e-5)
     
