@@ -26,6 +26,10 @@ There are two main files in this repository for using the PPO algorithm with dif
 
 To use this implementation, run one of the main files with appropriate command line arguments (once I've added argument parsing :sweat_smile:). These command line arguments specify hyperparameters and other options for the PPO algorithm and the OpenAI Gym environment.
 
+
+https://user-images.githubusercontent.com/26146888/225728444-7b762845-e32f-4dfb-814c-57a12459ed39.mp4
+
+
 ## References
 
 For more information on the Proximal Policy Optimization algorithm, see the original paper by Schulman et al. (2017): ["Proximal Policy Optimization Algorithms"](https://arxiv.org/abs/1707.06347). 
