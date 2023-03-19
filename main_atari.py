@@ -7,6 +7,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from pyvirtualdisplay import Display
 from torch.utils.tensorboard import SummaryWriter
 
 from src.environment_factory import create_env_factory_atari
@@ -35,6 +36,10 @@ VALUE_LOSS_COEFF = 0.5
 MAX_GRADIENT = 0.5
 
 if __name__ == "__main__":
+    # Set up virtual display, making sure this code runs even if no displays are available
+    virtual_display = Display(visible=0, size=(1400, 900))
+    virtual_display.start()
+    
     # SEEDING
     random.seed(SEED)
     np.random.seed(SEED)
