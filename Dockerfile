@@ -25,11 +25,11 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
   && apt-get clean
 
 RUN pip3 install --upgrade pip
-RUN pip install pyglet==1.5
+RUN pip3 install pyglet==1.5
 RUN pip3 install pyvirtualdisplay
-RUN pip install swig
-RUN pip install gym[atari,box2d,accept-rom-license]
-RUN pip install imageio-ffmpeg
+RUN pip3 install swig
+RUN pip3 install gym[atari,box2d,accept-rom-license]
+RUN pip3 install imageio-ffmpeg
 RUN pip3 install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu116
 RUN pip3 install numpy
 RUN pip3 install tensorboard
