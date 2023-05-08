@@ -37,8 +37,8 @@ MAX_GRADIENT = 0.5
 
 if __name__ == "__main__":
     # Set up virtual display, making sure this code runs even if no displays are available
-    virtual_display = Display(visible=0, size=(1400, 900))
-    virtual_display.start()
+    #virtual_display = Display(visible=0, size=(1400, 900))
+    #virtual_display.start()
     
     # SEEDING
     random.seed(SEED)
@@ -48,6 +48,7 @@ if __name__ == "__main__":
 
     # Use GPU
     device = torch.device("cuda" if torch.cuda.is_available() and USE_GPU else "cpu")
+    print(device)
 
     # Generate run-name
     run_name = f"PPO-{ENVIRONMENT_ID}-{int(time.time())}"

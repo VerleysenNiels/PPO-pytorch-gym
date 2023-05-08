@@ -75,10 +75,10 @@ class AtariAgentSmall(nn.Module):
         self.critic = layer_init(nn.Linear(512, 1), std=1)
 
     def get_value(self, x):
-        return self.critic(self.network(x / 255.0))     # Scale observation to range of 0 to 1 by dividing by 255 
+        return self.critic(self.backbone(x / 255.0))     # Scale observation to range of 0 to 1 by dividing by 255 
 
     def get_action_and_value(self, x, action=None):
-        hidden = self.network(x / 255.0)    # Scale observation to range of 0 to 1 by dividing by 255 
+        hidden = self.backbone(x / 255.0)    # Scale observation to range of 0 to 1 by dividing by 255 
         logits = self.actor(hidden)
         action_probabilities = Categorical(logits=logits)
         if action is None:
@@ -86,5 +86,6 @@ class AtariAgentSmall(nn.Module):
         return action, action_probabilities.log_prob(action), action_probabilities.entropy(), self.critic(hidden)
     
     def to(self, device):
+        self.backbone = self.backbone.to(device)
         self.critic = self.critic.to(device)
         self.actor = self.actor.to(device)
