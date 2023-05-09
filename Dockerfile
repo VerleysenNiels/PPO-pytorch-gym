@@ -33,3 +33,4 @@ RUN pip3 install imageio-ffmpeg
 RUN pip3 install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu116
 RUN pip3 install numpy
 RUN pip3 install tensorboard
+RUN pip3 install stable-baselines3[extra]

@@ -1,7 +1,9 @@
 # Imports
 import random
 import time
+import logging
 
+from tqdm import tqdm
 import gym
 import numpy as np
 import torch
@@ -48,10 +50,11 @@ if __name__ == "__main__":
 
     # Use GPU
     device = torch.device("cuda" if torch.cuda.is_available() and USE_GPU else "cpu")
-    print(device)
 
     # Generate run-name
     run_name = f"PPO-{ENVIRONMENT_ID}-{int(time.time())}"
+
+    logging.info(f"Training PPO agent on {ENVIRONMENT_ID}.\n\tUsing {device}\n\tRun id: {run_name}")
     
     # Initialize tensorboard summary writer
     writer = SummaryWriter(f"tensorboard/{run_name}")
@@ -85,9 +88,12 @@ if __name__ == "__main__":
     
     batch_size = int(NUM_ENVS * NUM_STEPS_COLLECTED)
     num_updates_to_perform = TOTAL_TIMESTEPS // batch_size
+
+    # You can update this to add more information in the progress bar during training
+    description = {"loss":0.0}
     
     # Training loop
-    for update_idx in range(1, num_updates_to_perform + 1):
+    for update_idx in tqdm(range(1, num_updates_to_perform + 1), desc="Training", postfix=description):
         # Learning rate decay (annealing)
         # The learning rate will gradually decay from the configured value in the first loop to 0 in the last.
         current_lr = LEARNING_RATE * (1 - (update_idx - 1) / num_updates_to_perform)
@@ -201,6 +207,9 @@ if __name__ == "__main__":
                 loss.backward()
                 nn.utils.clip_grad_norm_(agent.parameters(), MAX_GRADIENT)
                 optimizer.step()
+        
+        # Update loss for the progress bar
+        description["loss"] = loss.item()
                 
         # Write results of this rollout and training phase to tensorboard.
         writer.add_scalar("charts/learning_rate", optimizer.param_groups[0]["lr"], global_step)
