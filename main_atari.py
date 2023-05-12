@@ -20,7 +20,7 @@ SEED = 1
 DETERMINISTIC_TORCH = True
 USE_GPU = True
 
-ENVIRONMENT_ID = "ALE/KungFuMaster-v5"
+ENVIRONMENT_ID = "ALE/Assault-v5"
 NUM_ENVS = 8
 NUM_STEPS_COLLECTED = 128
 NUM_MINI_BATCHES = 4
@@ -38,6 +38,8 @@ VALUE_LOSS_COEFF = 0.5
 MAX_GRADIENT = 0.5
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+
     # Set up virtual display, making sure this code runs even if no displays are available
     #virtual_display = Display(visible=0, size=(1400, 900))
     #virtual_display.start()
@@ -209,7 +211,7 @@ if __name__ == "__main__":
                 optimizer.step()
         
         # Update loss for the progress bar
-        description["loss"] = loss.item()
+        description = {"loss":loss.item()}
                 
         # Write results of this rollout and training phase to tensorboard.
         writer.add_scalar("charts/learning_rate", optimizer.param_groups[0]["lr"], global_step)
