@@ -1,4 +1,5 @@
 # Imports
+import argparse
 import random
 import time
 
@@ -7,50 +8,51 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from pyvirtualdisplay import Display
 from torch.utils.tensorboard import SummaryWriter
+from tqdm import tqdm
 
 from src.environment_factory import create_env_factory
 from src.ppo_agents import AgentSmall
 
-# Arguments (TODO: handle with argument parser)
-SEED = 1
-DETERMINISTIC_TORCH = True
-USE_GPU = True
-
-ENVIRONMENT_ID = "CartPole-v1" # Start with cartpole for development
-NUM_ENVS = 4
-NUM_STEPS_COLLECTED = 128
-NUM_MINI_BATCHES = 4
-NUM_EPOCHS = 4          # Number of epochs per training phase
-
-LEARNING_RATE = 2.5e-4
-TOTAL_TIMESTEPS = 25000
-
-GAE_GAMMA = 0.99
-GAE_LAMBDA = 0.95
-
-CLIP_COEFF = 0.2
-ENT_LOSS_COEFF = 0.01
-VALUE_LOSS_COEFF = 0.5
-MAX_GRADIENT = 0.5
-
 if __name__ == "__main__":
-    # Set up virtual display, making sure this code runs even if no displays are available
-    virtual_display = Display(visible=0, size=(1400, 900))
-    virtual_display.start()
+    # Arguments
+    parser = argparse.ArgumentParser(description='PPO Classic Control Training Arguments')
+    
+    parser.add_argument('--environment-id', type=str, default='CartPole-v1', help='Gym environment id to train on (default: CartPole-v1)')
+    
+    parser.add_argument('--num-envs', type=int, default=4, help='number of parallel environments to use (default: 4)')
+    parser.add_argument('--num-steps-collected', type=int, default=128, help='number of steps to collect per environment (default: 128)')    
+    parser.add_argument('--num-mini-batches', type=int, default=4, help='number of mini-batches to split each rollout into for training (default: 4)')
+    parser.add_argument('--num-epochs', type=int, default=4, help='number of epochs to train on each mini-batch (default: 4)')
+    
+    parser.add_argument('--learning-rate', type=float, default=2.5e-4, help='learning rate (default: 2.5e-4)')    
+    parser.add_argument('--total-timesteps', type=int, default=25000, help='total number of timesteps to train for (default: 25000)')
+    
+    parser.add_argument('--gae-gamma', type=float, default=0.99, help='discount factor for Generalized Advantage Estimation (default: 0.99)')
+    parser.add_argument('--gae-lambda', type=float, default=0.95, help='Lambda parameter for Generalized Advantage Estimation (default: 0.95)')
+    
+    parser.add_argument('--clip-coeff', type=float, default=0.2, help='Clipping parameter for PPO loss function (default: 0.2)')
+    parser.add_argument('--ent-loss-coeff', type=float, default=0.01, help='Weighting parameter for entropy loss term in PPO loss function (default: 0.01)')
+    parser.add_argument('--value-loss-coeff', type=float, default=0.5, help='Weighting parameter for value loss term in PPO loss function (default: 0.5)')
+    parser.add_argument('--max-gradient', type=float, default=0.5, help='Maximum gradient norm for gradient clipping (default: 0.5)')
+    
+    parser.add_argument('--seed', type=int, default=1, help='random seed (default: 1)')
+    parser.add_argument('--deterministic-torch', action='store_true', default=False, help='whether to use deterministic torch operations (default: False)')
+    parser.add_argument('--use-gpu', action='store_true', default=False, help='whether to use a GPU (default: False)')
+
+    args = parser.parse_args()
     
     # SEEDING
-    random.seed(SEED)
-    np.random.seed(SEED)
-    torch.manual_seed(SEED)
-    torch.backends.cudnn.deterministic = DETERMINISTIC_TORCH
+    random.seed(args.seed)
+    np.random.seed(args.seed)
+    torch.manual_seed(args.seed)
+    torch.backends.cudnn.deterministic = args.deterministic_torch
 
     # Use GPU
-    device = torch.device("cuda" if torch.cuda.is_available() and USE_GPU else "cpu")
+    device = torch.device("cuda" if torch.cuda.is_available() and args.use_gpu else "cpu")
 
     # Generate run-name
-    run_name = f"PPO-{ENVIRONMENT_ID}-{int(time.time())}"
+    run_name = f"PPO-{args.environment_id}-{int(time.time())}"
     
     # Initialize tensorboard summary writer
     writer = SummaryWriter(f"tensorboard/{run_name}")
@@ -59,43 +61,46 @@ if __name__ == "__main__":
     # For training PPO we need to use a vectorized architecture, this means that a single agent will be learning from
     # multiple instances of the environment at the same time. First during a rollout phase, the agent plays for a number of
     # steps in each environment storing all the experiences. Then in the learning phase, the agent improves based on what it has seen.
-    environments = gym.vector.SyncVectorEnv([create_env_factory(ENVIRONMENT_ID, SEED + i, i, run_name) for i in range(NUM_ENVS)])
+    environments = gym.vector.SyncVectorEnv([create_env_factory(args.environment_id, args.seed + i, i, run_name) for i in range(args.num_envs)])
     
     assert isinstance(environments.single_action_space, gym.spaces.Discrete), "PPO only supports environments with a discrete action space."
     
     # Init agent and optimizer
     agent = AgentSmall(environments)
     agent.to(device)
-    optimizer = optim.Adam(agent.parameters(), lr=LEARNING_RATE, eps=1e-5)
+    optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
     
     # Storage of rollout experiences
-    observations = torch.zeros((NUM_STEPS_COLLECTED, NUM_ENVS) + environments.single_observation_space.shape).to(device)
-    actions = torch.zeros((NUM_STEPS_COLLECTED, NUM_ENVS) + environments.single_action_space.shape).to(device)
-    logprobs = torch.zeros((NUM_STEPS_COLLECTED, NUM_ENVS)).to(device)
-    rewards = torch.zeros((NUM_STEPS_COLLECTED, NUM_ENVS)).to(device)
-    dones = torch.zeros((NUM_STEPS_COLLECTED, NUM_ENVS)).to(device)
-    values = torch.zeros((NUM_STEPS_COLLECTED, NUM_ENVS)).to(device)
+    observations = torch.zeros((args.num_steps_collected, args.num_envs) + environments.single_observation_space.shape).to(device)
+    actions = torch.zeros((args.num_steps_collected, args.num_envs) + environments.single_action_space.shape).to(device)
+    logprobs = torch.zeros((args.num_steps_collected, args.num_envs)).to(device)
+    rewards = torch.zeros((args.num_steps_collected, args.num_envs)).to(device)
+    dones = torch.zeros((args.num_steps_collected, args.num_envs)).to(device)
+    values = torch.zeros((args.num_steps_collected, args.num_envs)).to(device)
     
     # Prepare for playing
     global_step = 0
     start_timestamp = time.time()
     next_observation = torch.Tensor(environments.reset()).to(device)
-    next_done = torch.zeros(NUM_ENVS).to(device)
+    next_done = torch.zeros(args.num_envs).to(device)
     
-    batch_size = int(NUM_ENVS * NUM_STEPS_COLLECTED)
-    num_updates_to_perform = TOTAL_TIMESTEPS // batch_size
+    batch_size = int(args.num_envs * args.num_steps_collected)
+    num_updates_to_perform = args.total_timesteps // batch_size
+    
+    # You can update this to add more information in the progress bar during training
+    description = {"loss":0.0}
     
     # Training loop
-    for update_idx in range(1, num_updates_to_perform + 1):
+    for update_idx in tqdm(range(1, num_updates_to_perform + 1), desc="Training", postfix=description):
         # Learning rate decay (annealing)
         # The learning rate will gradually decay from the configured value in the first loop to 0 in the last.
-        current_lr = LEARNING_RATE * (1 - (update_idx - 1) / num_updates_to_perform)
+        current_lr = args.learning_rate * (1 - (update_idx - 1) / num_updates_to_perform)
         optimizer.param_groups[0]["lr"] = current_lr
         
         # Rollout phase
         # Perform actions for a given number of steps in each of the environment instances. Collect all experiences.
-        for step in range(NUM_STEPS_COLLECTED):
-            global_step += NUM_ENVS
+        for step in range(args.num_steps_collected):
+            global_step += args.num_envs
             
             # Store state
             observations[step] = next_observation
@@ -126,16 +131,16 @@ if __name__ == "__main__":
             next_advantage = 0
             
             # Actual advantage estimation by going from end to start over the collected observations.
-            for t in reversed(range(NUM_STEPS_COLLECTED)):
-                if t == NUM_STEPS_COLLECTED - 1:
+            for t in reversed(range(args.num_steps_collected)):
+                if t == args.num_steps_collected - 1:
                     nextnonterminal = 1.0 - next_done
                     nextvalues = next_value
                 else:
                     nextnonterminal = 1.0 - dones[t + 1]
                     nextvalues = values[t + 1]
                 
-                delta = rewards[t] + GAE_GAMMA * nextvalues * nextnonterminal - values[t]
-                advantages[t] = delta + GAE_GAMMA * GAE_LAMBDA * nextnonterminal * next_advantage
+                delta = rewards[t] + args.gae_gamma * nextvalues * nextnonterminal - values[t]
+                advantages[t] = delta + args.gae_gamma * args.gae_lambda * nextnonterminal * next_advantage
                 next_advantage = advantages[t]
                 
             returns = advantages + values
@@ -152,11 +157,11 @@ if __name__ == "__main__":
         b_indices = np.arange(batch_size)
         clipped_fractions = []
         # Optimize with the observations from the rollout for the configured number of epochs
-        for epoch in range(NUM_EPOCHS):
+        for epoch in range(args.num_epochs):
             # Random shuffling and division in minibatches
             np.random.shuffle(b_indices)
-            for start in range(0, batch_size, NUM_MINI_BATCHES):
-                end = start + NUM_MINI_BATCHES
+            for start in range(0, batch_size, args.num_mini_batches):
+                end = start + args.num_mini_batches
                 mb_indices = b_indices[start:end]
 
                 # Get predictions by the agent on the minibatch
@@ -170,7 +175,7 @@ if __name__ == "__main__":
                     # Approximate Kullback–Leibler divergence to monitor how aggressive the policy is updated
                     approx_kl = ((ratio - 1) - logratio).mean()
                     # Monitor how often clipping is triggered
-                    clipped_fractions += [((ratio - 1.0).abs() > CLIP_COEFF).float().mean().item()]
+                    clipped_fractions += [((ratio - 1.0).abs() > args.clip_coeff).float().mean().item()]
 
                 # Get and normalize the advantages of this minibatch 
                 mb_advantages = b_advantages[mb_indices]
@@ -178,13 +183,13 @@ if __name__ == "__main__":
 
                 # Clipped surrogate objective
                 pg_loss1 = -mb_advantages * ratio
-                pg_loss2 = -mb_advantages * torch.clamp(ratio, 1 - CLIP_COEFF, 1 + CLIP_COEFF)
+                pg_loss2 = -mb_advantages * torch.clamp(ratio, 1 - args.clip_coeff, 1 + args.clip_coeff)
                 pg_loss = torch.max(pg_loss1, pg_loss2).mean()
 
                 # Value loss
                 new_value = new_value.view(-1)
                 v_loss_unclipped = (new_value - b_returns[mb_indices]) ** 2
-                v_clipped = b_values[mb_indices] + torch.clamp(new_value - b_values[mb_indices], -CLIP_COEFF, CLIP_COEFF)
+                v_clipped = b_values[mb_indices] + torch.clamp(new_value - b_values[mb_indices], -args.clip_coeff, args.clip_coeff)
                 v_loss_clipped = (v_clipped - b_returns[mb_indices]) ** 2
                 v_loss_max = torch.max(v_loss_unclipped, v_loss_clipped)
                 v_loss = 0.5 * v_loss_max.mean()
@@ -193,16 +198,19 @@ if __name__ == "__main__":
                 entropy_loss = entropy.mean()
                 
                 # Total loss
-                loss = pg_loss - ENT_LOSS_COEFF * entropy_loss + VALUE_LOSS_COEFF * v_loss
+                loss = pg_loss - args.ent_loss_coeff * entropy_loss + args.value_loss_coeff * v_loss
 
                 # Optimizer step with clipped gradients
                 optimizer.zero_grad()
                 loss.backward()
-                nn.utils.clip_grad_norm_(agent.parameters(), MAX_GRADIENT)
+                nn.utils.clip_grad_norm_(agent.parameters(), args.max_gradient)
                 optimizer.step()
                 
+        # Update loss for the progress bar
+        description = {"loss":loss.item()}
+                
         # Write results of this rollout and training phase to tensorboard.
-        writer.add_scalar("charts/learning_rate", optimizer.param_groups[0]["lr"], global_step)
+        writer.add_scalar("charts/args.learning_rate", optimizer.param_groups[0]["lr"], global_step)
         writer.add_scalar("charts/approximate_kl", approx_kl.item(), global_step)
         writer.add_scalar("charts/mean_fraction_clipped", np.mean(clipped_fractions), global_step) 
         writer.add_scalar("losses/value_loss", v_loss.item(), global_step)
