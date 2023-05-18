@@ -16,7 +16,7 @@ from src.ppo_agents import AgentSmall
 
 if __name__ == "__main__":
     # Arguments
-    parser = argparse.ArgumentParser(description='PPO Classic Control Training Arguments')
+    parser = argparse.ArgumentParser(description='PPO Classic Control Training Script')
     
     parser.add_argument('--environment-id', type=str, default='CartPole-v1', help='Gym environment id to train on (default: CartPole-v1)')
     
@@ -36,9 +36,9 @@ if __name__ == "__main__":
     parser.add_argument('--value-loss-coeff', type=float, default=0.5, help='Weighting parameter for value loss term in PPO loss function (default: 0.5)')
     parser.add_argument('--max-gradient', type=float, default=0.5, help='Maximum gradient norm for gradient clipping (default: 0.5)')
     
-    parser.add_argument('--seed', type=int, default=1, help='random seed (default: 1)')
-    parser.add_argument('--deterministic-torch', action='store_true', default=False, help='whether to use deterministic torch operations (default: False)')
-    parser.add_argument('--use-gpu', action='store_true', default=False, help='whether to use a GPU (default: False)')
+    parser.add_argument('--seed', type=int, default=1, help='random seed (default: 1)')    
+    parser.add_argument('--disable-deterministic-torch', action='store_true', help='whether to disable deterministic torch behavior (default: False)')
+    parser.add_argument('--use-cpu', action='store_true', default=False, help='force usage of CPU (default: False)')
 
     args = parser.parse_args()
     
@@ -46,10 +46,10 @@ if __name__ == "__main__":
     random.seed(args.seed)
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
-    torch.backends.cudnn.deterministic = args.deterministic_torch
+    torch.backends.cudnn.deterministic = not args.disable_deterministic_torch
 
     # Use GPU
-    device = torch.device("cuda" if torch.cuda.is_available() and args.use_gpu else "cpu")
+    device = torch.device("cuda" if torch.cuda.is_available() and not args.use_cpu else "cpu")
 
     # Generate run-name
     run_name = f"PPO-{args.environment_id}-{int(time.time())}"

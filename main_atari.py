@@ -19,27 +19,27 @@ if __name__ == "__main__":
     # Arguments
     parser = argparse.ArgumentParser(description='PPO Atari Training Script')
     
-    parser.add_argument('--environment-id', type=str, default='ALE/Assault-v5', help='environment ID')
+    parser.add_argument('--environment-id', type=str, default='ALE/Assault-v5', help='environment ID (default: ALE/Assault-v5)')
     
-    parser.add_argument('--num-envs', type=int, default=8, help='number of environments')
-    parser.add_argument('--num-steps-collected', type=int, default=128, help='number of steps collected per rollout')
-    parser.add_argument('--num-mini-batches', type=int, default=4, help='number of mini-batches')
-    parser.add_argument('--num-epochs', type=int, default=4, help='number of epochs per training phase')
+    parser.add_argument('--num-envs', type=int, default=8, help='number of environments (default: 8)')
+    parser.add_argument('--num-steps-collected', type=int, default=128, help='number of steps collected per rollout (default: 128)')
+    parser.add_argument('--num-mini-batches', type=int, default=4, help='number of mini-batches (default: 4)')
+    parser.add_argument('--num-epochs', type=int, default=4, help='number of epochs per training phase (default: 4)')
 
-    parser.add_argument('--learning-rate', type=float, default=2.5e-4, help='learning rate')
-    parser.add_argument('--total-timesteps', type=int, default=10000000, help='total number of timesteps')
+    parser.add_argument('--learning-rate', type=float, default=2.5e-4, help='learning rate (default: 2.5e-4)')
+    parser.add_argument('--total-timesteps', type=int, default=10000000, help='total number of timesteps (default: 1e7)')
 
-    parser.add_argument('--gae-gamma', type=float, default=0.99, help='GAE gamma parameter')
-    parser.add_argument('--gae-lambda', type=float, default=0.95, help='GAE lambda parameter')
+    parser.add_argument('--gae-gamma', type=float, default=0.99, help='GAE gamma parameter (default: 0.99)')
+    parser.add_argument('--gae-lambda', type=float, default=0.95, help='GAE lambda parameter (default: 0.95)')
 
-    parser.add_argument('--clip-coeff', type=float, default=0.1, help='clipping coefficient')
-    parser.add_argument('--ent-loss-coeff', type=float, default=0.01, help='entropy loss coefficient')
-    parser.add_argument('--value-loss-coeff', type=float, default=0.5, help='value loss coefficient')
-    parser.add_argument('--max-gradient', type=float, default=0.5, help='maximum gradient value')
+    parser.add_argument('--clip-coeff', type=float, default=0.1, help='clipping coefficient (default: 0.1)')
+    parser.add_argument('--ent-loss-coeff', type=float, default=0.01, help='entropy loss coefficient (default: 0.01)')
+    parser.add_argument('--value-loss-coeff', type=float, default=0.5, help='value loss coefficient (default: 0.5)')
+    parser.add_argument('--max-gradient', type=float, default=0.5, help='maximum gradient value (default: 0.5)')
     
-    parser.add_argument('--seed', type=int, default=1, help='random seed')
-    parser.add_argument('--deterministic-torch', action='store_true', help='whether to set deterministic torch behavior')
-    parser.add_argument('--use-gpu', action='store_true', help='whether to use GPU')
+    parser.add_argument('--seed', type=int, default=1, help='random seed (default: 1)')
+    parser.add_argument('--disable-deterministic-torch', action='store_true', help='whether to disable deterministic torch behavior (default: False)')
+    parser.add_argument('--use-cpu', action='store_true', default=False, help='force usage of CPU (default: False)')
 
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO)
@@ -48,10 +48,10 @@ if __name__ == "__main__":
     random.seed(args.seed)
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
-    torch.backends.cudnn.deterministic = args.deterministic_torch
+    torch.backends.cudnn.deterministic = not args.disable_deterministic_torch
 
     # Use GPU
-    device = torch.device("cuda" if torch.cuda.is_available() and args.use_gpu else "cpu")
+    device = torch.device("cuda" if torch.cuda.is_available() and not args.use_cpu else "cpu")
 
     # Generate run-name
     run_name = f"PPO-{args.environment_id}-{int(time.time())}"
@@ -65,7 +65,7 @@ if __name__ == "__main__":
     # For training PPO we need to use a vectorized architecture, this means that a single agent will be learning from
     # multiple instances of the environment at the same time. First during a rollout phase, the agent plays for a number of
     # steps in each environment storing all the experiences. Then in the learning phase, the agent improves based on what it has seen.
-    environments = gym.vector.SyncVectorEnv([create_env_factory_atari(args.environment_id, args.seed + i, i, run_name) for i in range(NUM_ENVS)])
+    environments = gym.vector.SyncVectorEnv([create_env_factory_atari(args.environment_id, args.seed + i, i, run_name) for i in range(args.num_envs)])
     
     assert isinstance(environments.single_action_space, gym.spaces.Discrete), "PPO only supports environments with a discrete action space."
     
