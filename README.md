@@ -24,9 +24,10 @@ There are two main files in this repository for using the PPO algorithm with dif
 
 2. **`main_atari.py`**: This file is used for OpenAI Gym environments that are in the Atari category, these are classic video games like Breakout and Pong.
 
-To use this implementation, run one of the main files with appropriate command line arguments (once I've added argument parsing :sweat_smile:). These command line arguments specify hyperparameters and other options for the PPO algorithm and the OpenAI Gym environment.
-
 ## Usage
+Use one of the main-files inside the right environment, you can use the Dockerfile or the conda environment yaml provided in this repository to build this on your system.
+You can change the behavior of the training script through commandline arguments as described below.
+
 Classic control:
 ```
 usage: main.py [-h] [--environment-id ENVIRONMENT_ID] [--num-envs NUM_ENVS] [--num-steps-collected NUM_STEPS_COLLECTED] [--num-mini-batches NUM_MINI_BATCHES] [--num-epochs NUM_EPOCHS] [--learning-rate LEARNING_RATE] [--total-timesteps TOTAL_TIMESTEPS]
