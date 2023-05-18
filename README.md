@@ -30,7 +30,7 @@ To use this implementation, run one of the main files with appropriate command l
 Classic control:
 ```
 usage: main.py [-h] [--environment-id ENVIRONMENT_ID] [--num-envs NUM_ENVS] [--num-steps-collected NUM_STEPS_COLLECTED] [--num-mini-batches NUM_MINI_BATCHES] [--num-epochs NUM_EPOCHS] [--learning-rate LEARNING_RATE] [--total-timesteps TOTAL_TIMESTEPS]
-               [--gae-gamma GAE_GAMMA] [--gae-lambda GAE_LAMBDA] [--clip-coeff CLIP_COEFF] [--ent-loss-coeff ENT_LOSS_COEFF] [--value-loss-coeff VALUE_LOSS_COEFF] [--max-gradient MAX_GRADIENT] [--seed SEED] [--deterministic-torch] [--use-gpu]
+               [--gae-gamma GAE_GAMMA] [--gae-lambda GAE_LAMBDA] [--clip-coeff CLIP_COEFF] [--ent-loss-coeff ENT_LOSS_COEFF] [--value-loss-coeff VALUE_LOSS_COEFF] [--max-gradient MAX_GRADIENT] [--seed SEED] [--disable-deterministic-torch] [--use-cpu]
 
 PPO Classic Control Training Script
 
@@ -62,15 +62,15 @@ options:
   --max-gradient MAX_GRADIENT
                         Maximum gradient norm for gradient clipping (default: 0.5)
   --seed SEED           random seed (default: 1)
-  --deterministic-torch
-                        whether to use deterministic torch operations (default: False)
-  --use-gpu             whether to use a GPU (default: False)
+  --disable-deterministic-torch
+                        whether to disable deterministic torch behavior (default: False)
+  --use-cpu             force usage of CPU (default: False)
 ```
 
 Atari:
 ```
 usage: main_atari.py [-h] [--environment-id ENVIRONMENT_ID] [--num-envs NUM_ENVS] [--num-steps-collected NUM_STEPS_COLLECTED] [--num-mini-batches NUM_MINI_BATCHES] [--num-epochs NUM_EPOCHS] [--learning-rate LEARNING_RATE] [--total-timesteps TOTAL_TIMESTEPS]
-                     [--gae-gamma GAE_GAMMA] [--gae-lambda GAE_LAMBDA] [--clip-coeff CLIP_COEFF] [--ent-loss-coeff ENT_LOSS_COEFF] [--value-loss-coeff VALUE_LOSS_COEFF] [--max-gradient MAX_GRADIENT] [--seed SEED] [--deterministic-torch] [--use-gpu]
+                     [--gae-gamma GAE_GAMMA] [--gae-lambda GAE_LAMBDA] [--clip-coeff CLIP_COEFF] [--ent-loss-coeff ENT_LOSS_COEFF] [--value-loss-coeff VALUE_LOSS_COEFF] [--max-gradient MAX_GRADIENT] [--seed SEED] [--disable-deterministic-torch] [--use-cpu]
 
 PPO Atari Training Script
 
@@ -102,9 +102,10 @@ options:
   --max-gradient MAX_GRADIENT
                         maximum gradient value (default: 0.5)
   --seed SEED           random seed (default: 1)
-  --deterministic-torch
-                        whether to set deterministic torch behavior (default: False)
-  --use-gpu             whether to use GPU (default: False)
+  --disable-deterministic-torch
+                        whether to disable deterministic torch behavior (default: False)
+  --use-cpu             force usage of CPU (default: False)
+
 
 ```
 
