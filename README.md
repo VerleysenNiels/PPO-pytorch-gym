@@ -2,6 +2,8 @@
 
 This repository contains an implementation of the Proximal Policy Optimization (PPO) algorithm for use in OpenAI Gym environments using PyTorch. The PPO algorithm is a reinforcement learning technique that has been shown to be effective in a wide range of tasks, including both continuous and discrete control problems.
 
+https://github.com/VerleysenNiels/PPO-pytorch-gym/assets/26146888/d2295d9d-c2f7-421a-a730-9a62a8755354
+
 ## Overview
 
 PPO is a policy gradient method that seeks to optimize a stochastic policy in an on-policy manner. The key idea behind PPO is to use a clipped surrogate objective function that ensures that the policy update does not deviate too far from the current policy, while still allowing for significant improvements in the policy.
@@ -112,12 +114,7 @@ options:
 
 https://user-images.githubusercontent.com/26146888/225728444-7b762845-e32f-4dfb-814c-57a12459ed39.mp4
 
-https://user-images.githubusercontent.com/26146888/237050171-ea751180-80f4-4b7f-af64-24bb08979b10.mp4
-
-https://github.com/VerleysenNiels/PPO-pytorch-gym/assets/26146888/bf604044-d7f5-4477-ba4c-78bc3f461de9
-
-https://github.com/VerleysenNiels/PPO-pytorch-gym/assets/26146888/05233fc2-b5ca-4a62-ba2c-93311aaff33e
-
+https://github.com/VerleysenNiels/PPO-pytorch-gym/assets/26146888/d2295d9d-c2f7-421a-a730-9a62a8755354
 
 ## References
 
